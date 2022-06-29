@@ -1,0 +1,18 @@
+[package]
+name = "hello"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+demikernel = { path = "/u/irene/msr/demikernel/src/demikernel" }
+
+[features]
+default = [ "catnap-libos" ]
+mlx4 = [ "demikernel/mlx4" ]
+mlx5 = [ "demikernel/mlx5" ]
+catnip-libos = [ "demikernel/catnip-libos" ]
+catnap-libos = [ "demikernel/catnap-libos" ]
+catpowder-libos = [ "demikernel/catpowder-libos" ]
+catcollar-libos = [ "demikernel/catcollar-libos" ]
