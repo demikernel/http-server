@@ -1,14 +1,14 @@
 use ::demikernel::{LibOS, OperationResult, QDesc, QToken};
 use std::fs;
-use std::io::prelude::*;
-use std::net::TcpListener;
-use std::net::TcpStream;
+use ::std::net::{Ipv4Addr, SocketAddrV4};
+use ::runtime::memory::Buffer;
 
 fn main() {
     let libos: LibOS = LibOS::new();
 
     // Create listening socket
-    let listening_sockqd: QDesc = setup("127.0.0.1:7878");
+    let ip = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7878);
+    let listening_sockqd: QDesc = setup(ip, libos);
     // create list of qtokens
     let mut qtokens: Vec<QToken> = Vec::new();
 
@@ -17,24 +17,18 @@ fn main() {
         Ok(qt) => qt,
         Err(e) => panic!("failed to accept connection on socket: {:?}", e.cause),
     };
-    qtokens.push(qt);
+    qtokens.push(accept_qt);
 
     // loop over connections
     loop {
-        let (i, qd, result) = match self.libos.wait_any2(&qtokens) {
+        let (i, qd, result) = match libos.wait_any2(&qtokens) {
             Ok((i, qd, result)) => (i, qd, result),
             Err(e) => panic!("Wait failed: {:?}", e),
         };
         
-        match result {
+        let qt = match result {
+            // New connection
             OperationResult::Accept(qd) => {
-                // accept next connection
-                accept_qt: QToken = match libos.accept(listening_sockqd) {
-                    Ok(qt) => qt,
-                    Err(e) => panic!("failed to accept connection on socket: {:?}", e.cause),
-                };
-                qtokens[i] = accept_qt; 
-
                 // pop from new connection
                 let qt: QToken = match libos.pop(qd) {
                     Ok(qt) => qt,
@@ -42,15 +36,46 @@ fn main() {
                 };
                 qtokens.push(qt);
                 println!("Connection established!");
+                // accept next connection
+                match libos.accept(listening_sockqd) {
+                    Ok(qt) => qt,
+                    Err(e) => panic!("failed to accept connection on socket: {:?}", e.cause),
+                }               
             }
+            // Pop
+            OperationResult::Pop(client, buf) => {
+                // process buffer
+                let response = process_request(buf);
 
-        }
-                handle_request();
-
+                // push response if there is a client IP
+                let Some(ip) = client;
+                match libos.pushto2(qd, &response, ip) {
+                    Ok(qt) => qt,
+                    Err(e) => panic!("failed to push data to socket: {:?}", e.cause),
+                }
+                
+       
+                // match libos.wait2(qt) {
+                //     Ok((_, OperationResult::Push)) => (),
+                //     Err(e) => panic!("Push response failed: {:?}", e.cause),
+                // };
+            }
+            // Push
+            OperationResult::Push => {
+                // pop again
+                match libos.pop(qd) {
+                    Ok(qt) => qt,
+                    Err(e) => panic!("failed to pop data from socket: {:?}", e.cause),
+                }
+            }
+            OperationResult::Failed(e) => panic!("operation failed: {:?}", e),
+            _ => panic!("unexpected result"),
+        };
+        qtokens[i] = qt;
     }
 }
 
-fn setup(local: String) -> QDesc {
+fn setup(local: SocketAddrV4, mut libos: LibOS) -> QDesc {
     let sockqd: QDesc = match libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0) {
         Ok(qd) => qd,
         Err(e) => panic!("failed to create socket: {:?}", e.cause),
@@ -72,10 +97,8 @@ fn setup(local: String) -> QDesc {
     sockqd
 }
 
-fn handle_connection(mut stream: TcpStream) {
-    let mut buffer = [0; 1024];
-
-    stream.read(&mut buffer).unwrap();
+fn process_request(buffer: Box<dyn Buffer>) -> Vec<u8> {
+    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
     let contents = fs::read_to_string("hello.html").unwrap();
 
     let response = format!(
@@ -83,7 +106,5 @@ fn handle_connection(mut stream: TcpStream) {
         contents.len(),
         contents
     );
-
-    stream.write(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
+    response.as_bytes().to_vec()
 }

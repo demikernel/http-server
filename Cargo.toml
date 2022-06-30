@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 demikernel = { path = "/u/irene/msr/demikernel/src/demikernel" }
+libc = "0.2.126"
+runtime = { git = "https://github.com/demikernel/runtime", rev = "e11b81477edc6e5abe23224711b498f9464e89b9" }
 
 [features]
 default = [ "catnap-libos" ]
@@ -16,3 +18,4 @@ catnip-libos = [ "demikernel/catnip-libos" ]
 catnap-libos = [ "demikernel/catnap-libos" ]
 catpowder-libos = [ "demikernel/catpowder-libos" ]
 catcollar-libos = [ "demikernel/catcollar-libos" ]
+
