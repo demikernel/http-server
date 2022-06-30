@@ -4,16 +4,34 @@ use ::std::net::{Ipv4Addr, SocketAddrV4};
 use ::runtime::memory::Buffer;
 
 fn main() {
-    let libos: LibOS = LibOS::new();
+    let mut libos: LibOS = LibOS::new();
 
     // Create listening socket
-    let ip = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7878);
-    let listening_sockqd: QDesc = setup(ip, libos);
+    let local = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7878);
+    let sockqd: QDesc = match libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0) {
+        Ok(qd) => qd,
+        Err(e) => panic!("failed to create socket: {:?}", e.cause),
+    };
+
+    // Bind to local address
+    match libos.bind(sockqd, local) {
+        Ok(()) => (),
+        Err(e) => panic!("failed to bind socket: {:?}", e.cause),
+    };
+
+    // Mark socket as a passive one.
+    match libos.listen(sockqd, 16) {
+        Ok(()) => (),
+        Err(e) => panic!("failed to listen socket: {:?}", e.cause),
+    }
+
+    println!("Local Address: {:?}", local);
+        
     // create list of qtokens
     let mut qtokens: Vec<QToken> = Vec::new();
 
     // Wait for first connection
-    let accept_qt: QToken = match libos.accept(listening_sockqd) {
+    let accept_qt: QToken = match libos.accept(sockqd) {
         Ok(qt) => qt,
         Err(e) => panic!("failed to accept connection on socket: {:?}", e.cause),
     };
@@ -37,24 +55,19 @@ fn main() {
                 qtokens.push(qt);
                 println!("Connection established!");
                 // accept next connection
-                match libos.accept(listening_sockqd) {
+                match libos.accept(sockqd) {
                     Ok(qt) => qt,
                     Err(e) => panic!("failed to accept connection on socket: {:?}", e.cause),
-                }               
+                }
             }
             // Pop
-            OperationResult::Pop(client, buf) => {
+            OperationResult::Pop(_, buf) => {
                 // process buffer
                 let response = process_request(buf);
-
-                // push response if there is a client IP
-                let Some(ip) = client;
-                match libos.pushto2(qd, &response, ip) {
+                match libos.push2(qd, &response) {
                     Ok(qt) => qt,
                     Err(e) => panic!("failed to push data to socket: {:?}", e.cause),
-                }
-                
-       
+                }       
                 // match libos.wait2(qt) {
                 //     Ok((_, OperationResult::Push)) => (),
                 //     Err(e) => panic!("Push response failed: {:?}", e.cause),
@@ -71,30 +84,9 @@ fn main() {
             OperationResult::Failed(e) => panic!("operation failed: {:?}", e),
             _ => panic!("unexpected result"),
         };
+
         qtokens[i] = qt;
     }
-}
-
-fn setup(local: SocketAddrV4, mut libos: LibOS) -> QDesc {
-    let sockqd: QDesc = match libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0) {
-        Ok(qd) => qd,
-        Err(e) => panic!("failed to create socket: {:?}", e.cause),
-    };
-
-    // Bind to local address
-    match libos.bind(sockqd, local) {
-        Ok(()) => (),
-        Err(e) => panic!("failed to bind socket: {:?}", e.cause),
-    };
-
-    // Mark socket as a passive one.
-    match libos.listen(sockqd, 16) {
-        Ok(()) => (),
-        Err(e) => panic!("failed to listen socket: {:?}", e.cause),
-    }
-
-    println!("Local Address: {:?}", local);
-    sockqd
 }
 
 fn process_request(buffer: Box<dyn Buffer>) -> Vec<u8> {
