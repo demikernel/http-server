@@ -6,9 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-demikernel = { path = "/u/irene/msr/demikernel/src/demikernel" }
+demikernel = { path = "/users/vishwa/demikernel/" }
 libc = "0.2.126"
-runtime = { git = "https://github.com/demikernel/runtime", rev = "e11b81477edc6e5abe23224711b498f9464e89b9" }
 
 [features]
 default = [ "catnap-libos" ]

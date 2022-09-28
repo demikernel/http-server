@@ -1,10 +1,19 @@
 use ::demikernel::{LibOS, OperationResult, QDesc, QToken};
+use demikernel::LibOSName;
 use std::fs;
 use ::std::net::{Ipv4Addr, SocketAddrV4};
-use ::runtime::memory::Buffer;
+// use ::runtime::memory::Buffer;
+use demikernel::runtime::memory::Buffer;
 
-fn main() {
-    let mut libos: LibOS = LibOS::new();
+fn main() -> ! {
+    let libos_name: String = "catnip".to_string();
+
+    let libos = match LibOS::new(LibOSName::Catnip){
+        Ok(libs) => libs,
+        Err(e) => {
+            println!("Error: {e}");
+        }
+    };
 
     // Create listening socket
     let local = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7878);
