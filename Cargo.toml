@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-demikernel = { path = "/users/vishwa/demikernel/" }
+demikernel = { path = "../demikernel/" }
 libc = "0.2.126"
 
 [features]
