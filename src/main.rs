@@ -15,9 +15,7 @@ use ::demikernel::{
     QToken,
 };
 use ::std::{
-    collections::{
-        HashMap,
-    },
+    collections::HashMap,
     fs,
     io::Write,
     net::{
@@ -166,7 +164,12 @@ impl Connection {
         assert_eq!(rsga.sga_numsegs, 1);
 
         // Print the incoming data.
-        let slice: &mut [u8] = unsafe { slice::from_raw_parts_mut(rsga.sga_segs[0].sgaseg_buf as *mut u8, rsga.sga_segs[0].sgaseg_len as usize) };
+        let slice: &mut [u8] = unsafe {
+            slice::from_raw_parts_mut(
+                rsga.sga_segs[0].sgaseg_buf as *mut u8,
+                rsga.sga_segs[0].sgaseg_len as usize,
+            )
+        };
         println!("Received: {}", String::from_utf8_lossy(slice));
 
         // Add incoming scatter-gather segment to our receive queue.
@@ -174,12 +177,18 @@ impl Connection {
 
         // Craft a response and send it.
         let ssga: demi_sgarray_t = libos.sgaalloc(1500)?;
-        let mut slice: &mut [u8] = unsafe { slice::from_raw_parts_mut(ssga.sga_segs[0].sgaseg_buf as *mut u8, ssga.sga_segs[0].sgaseg_len as usize) };
+        let mut slice: &mut [u8] = unsafe {
+            slice::from_raw_parts_mut(
+                ssga.sga_segs[0].sgaseg_buf as *mut u8,
+                ssga.sga_segs[0].sgaseg_len as usize,
+            )
+        };
 
         // Read the entire file into a string.
         let contents: String = fs::read_to_string("hello.html").expect("file should exist and be readable.");
 
-        write!(slice,
+        write!(
+            slice,
             "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
             contents.len(),
             contents
